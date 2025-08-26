@@ -85,7 +85,7 @@ namespace GenerativeAI.Gemini.Types
 
                     if (serializedResponse?.Candidates.LastOrDefault()?.FinishReason is FinishReason.MaxTokens)
                     {
-                        clonedPrompt.AddText($"Continue. follow this schema: {JsonConvert.SerializeObject(schema)}");
+                        clonedPrompt.AddText($"Continue. follow this schema: {JsonConvert.SerializeObject(schema, JsonSerializerSettings)}");
                         generationConfig = generationConfig with { ResponseSchema = null };
                     }
                 } while (serializedResponse?.Candidates.LastOrDefault()?.FinishReason is FinishReason.MaxTokens);

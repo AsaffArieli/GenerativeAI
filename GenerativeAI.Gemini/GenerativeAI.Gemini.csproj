@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PackageId>GenerativeAI.Gemini</PackageId>
-	<Version>1.0.0</Version>
+	<Version>1.0.1</Version>
 	<Authors>Asaff Arieli</Authors>
 	<Company>GnerativeAI</Company>
 	<Description>GenerativeAI.Gemini is a .NET library that provides typed access to Google Gemini AI models.</Description>
