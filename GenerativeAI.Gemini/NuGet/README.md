@@ -28,12 +28,15 @@ You can register the Gemini client in your DI container using an API key and (op
 services.AddGemini("your-api-key", "optional-model-name");
 ````````
 
-Or bind from configuration:
+Or bind from configuration (example for `appsettings.json`):
 
-````````yaml
-Gemini:
-  ApiKey: "your-api-key"
-  Model: "optional-model-name"
+````````json
+{
+  "Gemini": {
+    "ApiKey": "your-api-key",
+    "Model": "optional-model-name"
+  }
+}
 ````````
 
 ### 2. Create and Execute Prompts
@@ -88,7 +91,7 @@ var prompt = _geminiClient.CreatePrompt(options);
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](../LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ## Important Notes
 

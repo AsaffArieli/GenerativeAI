@@ -4,12 +4,11 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	  
 	<PackageId>GenerativeAI.Gemini</PackageId>
 	<Version>1.0.0</Version>
 	<Authors>Asaff Arieli</Authors>
 	<Company>GnerativeAI</Company>
-	<Description>GenerativeAI.Gemini is a .NET library that provides typed access to Google Gemini AI models</Description>
+	<Description>GenerativeAI.Gemini is a .NET library that provides typed access to Google Gemini AI models.</Description>
 	<PackageTags>AI;Gemini;GnerativeAI</PackageTags>
 	<PackageProjectUrl>https://github.com/AsaffArieli/GenerativeAI</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/AsaffArieli/GenerativeAI.git</RepositoryUrl>

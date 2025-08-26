@@ -117,9 +117,8 @@ namespace GenerativeAI.Gemini.Types
             {
                 Content = new StringContent(JsonConvert.SerializeObject(new PromptConfig(contents, generationConfig), JsonSerializerSettings), Encoding.UTF8, MediaTypeNames.Application.Json)
             };
-            Console.WriteLine(JsonConvert.SerializeObject(new PromptConfig(contents, generationConfig), settings: JsonSerializerSettings, formatting: Formatting.Indented));
+
             using var response = await httpClient.SendAsync(request, cancellationToken);
-            Console.WriteLine(await response.Content.ReadAsStringAsync(cancellationToken));
             
             var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
             return response.IsSuccessStatusCode ? responseText : throw new BadHttpRequestException(responseText, (int)response.StatusCode);
