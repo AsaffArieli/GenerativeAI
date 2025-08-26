@@ -12,7 +12,7 @@
 	<PackageTags>AI;Gemini;GnerativeAI</PackageTags>
 	<PackageProjectUrl>https://github.com/AsaffArieli/GenerativeAI</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/AsaffArieli/GenerativeAI.git</RepositoryUrl>
-	<RepositoryType>git</RepositoryType>
+	<RepositoryType>GIT</RepositoryType>
 	<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<PackageIcon>GenerativeAI.png</PackageIcon>
@@ -24,6 +24,7 @@
 	<EmbedUntrackedSources>false</EmbedUntrackedSources>
 	<ContinuousIntegrationBuild Condition="'$(CI)'!=''">true</ContinuousIntegrationBuild>
 	<Deterministic>true</Deterministic>
+	<Copyright>© 2025 Asaff Arieli. All rights reserved.</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
