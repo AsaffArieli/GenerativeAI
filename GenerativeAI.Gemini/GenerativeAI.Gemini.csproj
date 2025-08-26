@@ -4,6 +4,27 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+	  
+	<PackageId>GenerativeAI.Gemini</PackageId>
+	<Version>1.0.0</Version>
+	<Authors>Asaff Arieli</Authors>
+	<Company>GnerativeAI</Company>
+	<Description>GenerativeAI.Gemini is a .NET library that provides typed access to Google Gemini AI models</Description>
+	<PackageTags>AI;Gemini;GnerativeAI</PackageTags>
+	<PackageProjectUrl>https://github.com/AsaffArieli/GenerativeAI</PackageProjectUrl>
+	<RepositoryUrl>https://github.com/AsaffArieli/GenerativeAI.git</RepositoryUrl>
+	<RepositoryType>git</RepositoryType>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+	<PackageIcon>GenerativeAI.png</PackageIcon>
+	<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+	<IncludeSymbols>true</IncludeSymbols>
+	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	<PublishRepositoryUrl>true</PublishRepositoryUrl>
+	<EmbedUntrackedSources>false</EmbedUntrackedSources>
+	<ContinuousIntegrationBuild Condition="'$(CI)'!=''">true</ContinuousIntegrationBuild>
+	<Deterministic>true</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +34,12 @@
   <ItemGroup>
 	<PackageReference Include="JsonSubTypes" Version="2.0.1" />
 	<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+	
+  <ItemGroup>
+	<None Include="NuGet/README.md" Pack="true" PackagePath="/" />
+	<None Include="NuGet/GenerativeAI.png" Pack="true" PackagePath="/" />
   </ItemGroup>
 	
 </Project>
