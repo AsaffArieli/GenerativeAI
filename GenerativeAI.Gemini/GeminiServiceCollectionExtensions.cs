@@ -1,4 +1,5 @@
-﻿using GenerativeAI.Gemini.Enums;
+﻿using GenerativeAI.Gemini.Contracts;
+using GenerativeAI.Gemini.Enums;
 using GenerativeAI.Gemini.Types;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,4 +1,5 @@
-﻿using GenerativeAI.Gemini.Enums;
+﻿using GenerativeAI.Gemini.Contracts;
+using GenerativeAI.Gemini.Enums;
 using GenerativeAI.Gemini.Models;
 using GenerativeAI.Gemini.Serializer;
 using Microsoft.AspNetCore.Http;
@@ -10,17 +11,19 @@ using System.Text;
 
 namespace GenerativeAI.Gemini.Types
 {
-    /// <summary>
-    /// Provides a concrete implementation of <see cref="IGeminiClient"/> for interacting with the Gemini API.
-    /// </summary>
-    internal sealed class GeminiClient(IOptions<GeminiPromptOptions> options) : IGeminiClient
+    /// <inheritdoc cref="IGeminiClient" />
+    /// <param name="options">
+    /// The configured <see cref="GeminiPromptOptions"/> bound by DI via <see cref="IOptions{TOptions}"/>.
+    /// These values seed <see cref="DefaultPromptOptions"/>.
+    /// </param>
+    public sealed class GeminiClient(IOptions<GeminiPromptOptions> options) : IGeminiClient
     {
         /// <summary>
         /// Represents the configuration payload sent to the Gemini API.
         /// </summary>
         /// <param name="Contents">The collection of content parts that make up the prompt.</param>
         /// <param name="GenerationConfig">The configuration for response generation.</param>
-        private record PromptConfig(ICollection<Content> Contents, GenerationConfig GenerationConfig);
+        private sealed record PromptConfig(ICollection<Content> Contents, GenerationConfig GenerationConfig);
 
         /// <summary>
         /// The JSON serializer settings used for all Gemini API requests and responses.
@@ -32,38 +35,66 @@ namespace GenerativeAI.Gemini.Types
             Converters = [new StringEnumConverter()]
         };
 
-        /// <summary>
-        /// Gets or sets the default configuration options used for Gemini prompts and API requests.
-        /// </summary>
+        /// <inheritdoc cref="IGeminiClient.DefaultPromptOptions" />
         public GeminiPromptOptions DefaultPromptOptions { get; set; } = options.Value;
 
         /// <summary>
-        /// Creates a new <see cref="IGeminiPrompt"/> instance using the specified options or the default options if none are provided.
+        /// Initializes a new instance of <see cref="GeminiClient"/>.
+        /// Seeds <see cref="DefaultPromptOptions"/> with the provided values.
         /// </summary>
-        /// <param name="defaultOptions">Optional. The prompt options to use for the new prompt. If <c>null</c>, <see cref="DefaultPromptOptions"/> is used.</param>
-        /// <returns>A new <see cref="IGeminiPrompt"/> instance.</returns>
+        /// <param name="apiKey">The Gemini API key to use for authentication.</param>
+        /// <param name="defaultModel">Optional. The default model identifier.</param>
+        /// <param name="httpClient">
+        /// Optional. The <see cref="HttpClient"/> to use for requests. If <c>null</c>, a new <see cref="HttpClient"/> is created.
+        /// </param>
+        public GeminiClient(string apiKey, string? defaultModel = null, HttpClient? httpClient = null) : this(Options.Create(new GeminiPromptOptions()))
+        {
+            DefaultPromptOptions.ApiKey = apiKey;
+            DefaultPromptOptions.Model = defaultModel;
+            DefaultPromptOptions.HttpClient = httpClient ?? new();
+        }
+
+        /// <param name="defaultModel">
+        /// Optional. The default <see cref="GeminiModel"/> to use. This is mapped to the official model identifier.
+        /// </param>
+        /// <inheritdoc cref="GeminiClient(string, string?, HttpClient?)" />
+#pragma warning disable CS1573
+        public GeminiClient(string apiKey, GeminiModel? defaultModel = null, HttpClient? httpClient = null) : this(apiKey, defaultModel.HasValue ? GeminiPromptOptions.GetModelName(defaultModel.Value) : null, httpClient) { }
+#pragma warning restore CS1573
+
+        /// <inheritdoc cref="IGeminiClient.CreatePrompt(GeminiPromptOptions?)" />
         public IGeminiPrompt CreatePrompt(GeminiPromptOptions? defaultOptions = null) => new GeminiPrompt((defaultOptions ?? DefaultPromptOptions) with { });
 
-        /// <summary>
-        /// Executes the Gemini model using the specified prompt and returns a response containing plain text data.
-        /// </summary>
-        /// <param name="prompt">The prompt to send to the Gemini API.</param>
-        /// <param name="cancellationToken">Optional. A token to monitor for cancellation requests.</param>
-        /// <returns>
-        /// A task representing the asynchronous operation, with a result of <see cref="IGeminiResponse{String}"/> containing the model's response as a string.
-        /// </returns>
-        public async Task<IGeminiResponse<string>> ExecuteModelAsync(IGeminiPrompt prompt, CancellationToken cancellationToken = default) => await ExecuteModelAsync<string>(prompt, cancellationToken);
+        /// <inheritdoc cref="IGeminiClient.ExecuteAsync(IGeminiPrompt, CancellationToken)" />
+        public async Task<IGeminiResponse<string>> ExecuteAsync(IGeminiPrompt prompt, CancellationToken cancellationToken = default) => await CallGeminiAsync<string>(prompt, cancellationToken);
+
+        /// <inheritdoc cref="IGeminiClient.ExecuteAsync{TSchema}(IGeminiPrompt, CancellationToken)" />
+        public async Task<IGeminiResponse<TSchema>> ExecuteAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default) => await CallGeminiAsync<TSchema>(prompt, cancellationToken);
 
         /// <summary>
-        /// Executes the Gemini model using the specified prompt and returns a response containing data deserialized to the specified schema type.
+        /// Executes the Gemini API for the given prompt and materializes a typed response.
+        /// Handles multi-part (paged) completions by continuing when the model stops at MaxTokens,
+        /// accumulating all response parts and returning a consolidated <see cref="IGeminiResponse{TSchema}"/>.
         /// </summary>
-        /// <typeparam name="TSchema">The type to which the response data should be deserialized.</typeparam>
-        /// <param name="prompt">The prompt to send to the Gemini API.</param>
-        /// <param name="cancellationToken">Optional. A token to monitor for cancellation requests.</param>
+        /// <typeparam name="TSchema">
+        /// The target type for the model output.
+        /// Use <see cref="string"/> to receive raw concatenated text; otherwise the text is JSON-deserialized into <typeparamref name="TSchema"/>.
+        /// A JSON schema derived from <typeparamref name="TSchema"/> is provided to the model to encourage structured output.
+        /// </typeparam>
+        /// <param name="prompt">
+        /// The prompt to execute. A clone is created internally so the original is not mutated.
+        /// The <see cref="IGeminiResponse{TSchema}.Prompt"/> in the result contains the augmented prompt (with model candidates appended).
+        /// </param>
+        /// <param name="cancellationToken">A token to observe for cancellation of the underlying HTTP requests.</param>
         /// <returns>
-        /// A task representing the asynchronous operation, with a result of <see cref="IGeminiResponse{TSchema}"/> containing the model's response as the specified type.
+        /// An <see cref="IGeminiResponse{TSchema}"/> containing the deserialized data (if successful).
         /// </returns>
-        public async Task<IGeminiResponse<TSchema>> ExecuteModelAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default)
+        /// <remarks>
+        /// - Resolves HttpClient, ApiKey, and Model from the prompt options or from <see cref="DefaultPromptOptions"/>.<br/>
+        /// - If the last candidate finishes with <c>MaxTokens</c>, the method appends a "Continue" instruction and retries without the response schema to complete the output.<br/>
+        /// - All response parts are accumulated to preserve usage metadata and full text.
+        /// </remarks>
+        private async Task<IGeminiResponse<TSchema>> CallGeminiAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default)
         {
             try
             {

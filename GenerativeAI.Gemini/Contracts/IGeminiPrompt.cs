@@ -1,8 +1,9 @@
 ﻿using GenerativeAI.Gemini.Enums;
 using GenerativeAI.Gemini.Models;
+using GenerativeAI.Gemini.Types;
 using Microsoft.Extensions.Options;
 
-namespace GenerativeAI.Gemini
+namespace GenerativeAI.Gemini.Contracts
 {
     /// <summary>
     /// Defines the contract for building a prompt to be sent to the Gemini AI model.

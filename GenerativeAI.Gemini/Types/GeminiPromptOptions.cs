@@ -1,7 +1,7 @@
 ﻿using GenerativeAI.Gemini.Enums;
 using System.Runtime.Serialization;
 
-namespace GenerativeAI.Gemini
+namespace GenerativeAI.Gemini.Types
 {
     /// <summary>
     /// Represents configuration options for a Gemini prompt.

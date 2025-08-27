@@ -1,4 +1,5 @@
-﻿using GenerativeAI.Gemini.Enums;
+﻿using GenerativeAI.Gemini.Contracts;
+using GenerativeAI.Gemini.Enums;
 using GenerativeAI.Gemini.Models;
 using GenerativeAI.Gemini.Models.Part;
 using Newtonsoft.Json;

@@ -1,4 +1,5 @@
-﻿using System.Net.Mime;
+﻿using GenerativeAI.Gemini.Types;
+using System.Net.Mime;
 using static GenerativeAI.Gemini.Models.GenerationConfig;
 
 namespace GenerativeAI.Gemini.Models

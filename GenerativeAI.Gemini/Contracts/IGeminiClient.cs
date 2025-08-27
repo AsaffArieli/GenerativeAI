@@ -1,7 +1,9 @@
-﻿namespace GenerativeAI.Gemini
+﻿using GenerativeAI.Gemini.Types;
+
+namespace GenerativeAI.Gemini.Contracts
 {
     /// <summary>
-    /// Represents the contract for a Gemini client that manages prompt creation and model execution against the Gemini API.
+    /// Defines the primary client contract for interacting with Google's Gemini models.
     /// </summary>
     public interface IGeminiClient
     {
@@ -25,7 +27,7 @@
         /// <returns>
         /// A task representing the asynchronous operation, with a result of <see cref="IGeminiResponse{String}"/> containing the model's response as a string.
         /// </returns>
-        Task<IGeminiResponse<string>> ExecuteModelAsync(IGeminiPrompt prompt, CancellationToken cancellationToken = default);
+        Task<IGeminiResponse<string>> ExecuteAsync(IGeminiPrompt prompt, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Executes the Gemini model using the specified prompt and returns a response containing data deserialized to the specified schema type.
@@ -36,6 +38,6 @@
         /// <returns>
         /// A task representing the asynchronous operation, with a result of <see cref="IGeminiResponse{TSchema}"/> containing the model's response as the specified type.
         /// </returns>
-        Task<IGeminiResponse<TSchema>> ExecuteModelAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default);
+        Task<IGeminiResponse<TSchema>> ExecuteAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default);
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace GenerativeAI.Gemini
+﻿namespace GenerativeAI.Gemini.Types
 {
     /// <summary>
     /// Represents token usage statistics for a Gemini prompt and its response.
