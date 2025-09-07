@@ -1,4 +1,4 @@
-﻿using GenerativeAI.Gemini.Types;
+﻿using GenerativeAI.Gemini.Types.Prompt;
 using System.Net.Mime;
 using static GenerativeAI.Gemini.Models.GenerationConfig;
 
@@ -26,7 +26,7 @@ namespace GenerativeAI.Gemini.Models
     /// <param name="ThinkingConfig">
     /// Settings related to the model's "thinking" process, such as the thinking budget.
     /// </param>
-    internal sealed record GenerationConfig(object? ResponseSchema, double Temperature, int TopK, double TopP, int? MaxOutputTokens, ThinkingSettings ThinkingConfig)
+    public sealed record GenerationConfig(object? ResponseSchema, double Temperature, int TopK, double TopP, int? MaxOutputTokens, ThinkingSettings ThinkingConfig)
     {
         /// <summary>
         /// Encapsulates settings related to the model's thinking process.

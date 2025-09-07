@@ -1,6 +1,7 @@
 ﻿using GenerativeAI.Gemini.Contracts;
 using GenerativeAI.Gemini.Enums;
 using GenerativeAI.Gemini.Types;
+using GenerativeAI.Gemini.Types.Prompt;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,6 +12,11 @@ namespace GenerativeAI.Gemini
     /// </summary>
     public static class GeminiServiceCollectionExtensions
     {
+        /// <summary>
+        /// The name for the auto registered Http named client.
+        /// </summary>
+        private const string HttpClientName = nameof(GenerativeAI) + nameof(GeminiClient);
+
         /// <summary>
         /// The default configuration section name used for binding Gemini settings from IConfiguration.
         /// </summary>
@@ -66,11 +72,11 @@ namespace GenerativeAI.Gemini
                 {
                     var provider = services.BuildServiceProvider();
                     var factory = provider.GetRequiredService<IHttpClientFactory>();
-                    options.HttpClient = factory.CreateClient(nameof(GeminiClient));
+                    options.HttpClient = factory.CreateClient(HttpClientName);
                 }
             });
 
-            services.AddHttpClient(nameof(GeminiClient));
+            services.AddHttpClient(HttpClientName);
 
             return services.AddGeminiCore();
         }
@@ -97,8 +103,8 @@ namespace GenerativeAI.Gemini
             }
             else
             {
-                services.AddHttpClient(nameof(GeminiClient));
-                builder.PostConfigure<IHttpClientFactory>((options, factory) => options.HttpClient = factory.CreateClient(nameof(GeminiClient)));
+                services.AddHttpClient(HttpClientName);
+                builder.PostConfigure<IHttpClientFactory>((options, factory) => options.HttpClient = factory.CreateClient(HttpClientName));
             }
 
             return services.AddGeminiCore();

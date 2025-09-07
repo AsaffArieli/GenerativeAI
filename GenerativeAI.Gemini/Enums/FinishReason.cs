@@ -9,7 +9,7 @@ namespace GenerativeAI.Gemini.Enums
     /// This enum is used to indicate the completion condition for a model's output.
     /// </summary>
     [JsonConverter(typeof(StringEnumConverter))]
-    internal enum FinishReason
+    public enum FinishReason
     {
         /// <summary>
         /// The model stopped because it encountered a natural stop sequence or completed its response.

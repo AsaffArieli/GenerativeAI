@@ -1,7 +1,6 @@
 ﻿using GenerativeAI.Gemini.Enums;
 using GenerativeAI.Gemini.Models;
-using GenerativeAI.Gemini.Types;
-using Microsoft.Extensions.Options;
+using GenerativeAI.Gemini.Types.Prompt;
 
 namespace GenerativeAI.Gemini.Contracts
 {
@@ -11,14 +10,14 @@ namespace GenerativeAI.Gemini.Contracts
     public interface IGeminiPrompt
     {
         /// <summary>
-        /// Gets the collection of content parts that make up the prompt.
+        /// The collection of content parts that make up the prompt.
         /// </summary>
-        internal ICollection<Content> Contents { get; set; }
+        ICollection<Content> Contents { get; set; }
 
         /// <summary>
-        /// Gets the configuration options used for this prompt.
+        /// The configuration options used for this prompt.
         /// </summary>
-        public GeminiPromptOptions PromptOptions { get; }
+        GeminiPromptOptions PromptOptions { get; }
 
         /// <summary>
         /// Creates a copy of the current prompt instance.

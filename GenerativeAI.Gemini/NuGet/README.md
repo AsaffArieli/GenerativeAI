@@ -1,14 +1,16 @@
 # GenerativeAI.Gemini
 
-A .NET 9 library for seamless integration with Google's Gemini generative AI models. This package provides dependency injection, prompt building, and response handling for Gemini APIs.
+A comprehensive .NET 9 library for seamless integration with Google's Gemini generative AI models. This package provides strongly-typed clients, dependency injection support, structured response handling, and advanced features like tool integration and schema-based generation.
 
 ## Features
 
-- Strongly-typed configuration for Gemini API requests
-- Dependency injection support via `IServiceCollection`
-- Flexible prompt construction with text and file (base64) parts
-- Async model execution with schema-based deserialization
-- Customizable model, temperature, top-k, top-p, and more
+- **Strongly-typed API** - Full IntelliSense support with comprehensive type safety
+- **Dependency Injection** - Native ASP.NET Core DI integration
+- **Flexible Prompt Building** - Support for text, files, and mixed content
+- **Structured Responses** - Automatic JSON schema generation and deserialization
+- **Tool Integration** - Built-in support for code execution, web search, and URL context
+- **Async/Await** - Modern async programming patterns
+- **Configuration Binding** - Seamless integration with .NET configuration system
 
 ## Installation
 
@@ -20,7 +22,9 @@ dotnet add package GenerativeAI.Gemini
 
 ## Getting Started
 
-### 1. Register Gemini Services
+### Option 1: Using Dependency Injection (Recommended)
+
+**Register Services with API Key**
 
 You can register the Gemini client in your DI container using an API key and (optionally) a model:
 
@@ -51,9 +55,12 @@ public class Example
     public Example(IGeminiClient geminiClient)
     {
         _geminiClient = geminiClient;
+
+        // Alternative: Create GeminiClient directly without DI
+        // _geminiClient = new GeminiClient("your-api-key", GeminiModel.Gemini2_5Pro);
     }
 
-    public async Task<string> GetResponseAsync()
+    public async Task<IEnumerable<string>> GetResponseAsync()
     {
         // Create a prompt
         var prompt = _geminiClient.CreatePrompt();
@@ -65,9 +72,12 @@ public class Example
         // prompt.AddInlineData(base64ImageString, "image/png");
 
         // Execute the model and get a plain text response
-        var response = await _geminiClient.ExecuteModelAsync(prompt);
+        var response = await _geminiClient.GenerateTextAsync(prompt);
 
-        return response.Data;
+        // Extract all the text parts
+        var textParts = response.TextParts.Select(part => part.text);
+
+        return textParts;
     }
 }
 ````````

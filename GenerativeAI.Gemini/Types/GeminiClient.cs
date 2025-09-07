@@ -2,6 +2,9 @@
 using GenerativeAI.Gemini.Enums;
 using GenerativeAI.Gemini.Models;
 using GenerativeAI.Gemini.Serializer;
+using GenerativeAI.Gemini.Types.Prompt;
+using GenerativeAI.Gemini.Types.PromptConfig;
+using GenerativeAI.Gemini.Types.Response;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -11,7 +14,9 @@ using System.Text;
 
 namespace GenerativeAI.Gemini.Types
 {
-    /// <inheritdoc cref="IGeminiClient" />
+    /// <summary>
+    /// Provides a client for interacting with Google's Gemini API. Implements <see cref="IGeminiClient"/>.
+    /// </summary>
     /// <param name="options">
     /// The configured <see cref="GeminiPromptOptions"/> bound by DI via <see cref="IOptions{TOptions}"/>.
     /// These values seed <see cref="DefaultPromptOptions"/>.
@@ -19,11 +24,21 @@ namespace GenerativeAI.Gemini.Types
     public sealed class GeminiClient(IOptions<GeminiPromptOptions> options) : IGeminiClient
     {
         /// <summary>
+        /// Encapsulates all the configuration and data required to make a request to the Gemini API.
+        /// </summary>
+        /// <param name="Payload">The request payload.</param>
+        /// <param name="Model">The Gemini model version to use for the request.</param>
+        /// <param name="ApiKey">The API key for authentication with the Gemini API.</param>
+        /// <param name="HttpClient">The HTTP client used to send the request.</param>
+        private sealed record RequestConfig(PromptPayload Payload, string Model, string ApiKey, HttpClient HttpClient);
+
+        /// <summary>
         /// Represents the configuration payload sent to the Gemini API.
         /// </summary>
         /// <param name="Contents">The collection of content parts that make up the prompt.</param>
         /// <param name="GenerationConfig">The configuration for response generation.</param>
-        private sealed record PromptConfig(ICollection<Content> Contents, GenerationConfig GenerationConfig);
+        /// <param name="Tools">The configuration for tools.</param>
+        private sealed record PromptPayload(IEnumerable<Content> Contents, GenerationConfig GenerationConfig, IEnumerable<object> Tools);
 
         /// <summary>
         /// The JSON serializer settings used for all Gemini API requests and responses.
@@ -65,93 +80,100 @@ namespace GenerativeAI.Gemini.Types
         /// <inheritdoc cref="IGeminiClient.CreatePrompt(GeminiPromptOptions?)" />
         public IGeminiPrompt CreatePrompt(GeminiPromptOptions? defaultOptions = null) => new GeminiPrompt((defaultOptions ?? DefaultPromptOptions) with { });
 
-        /// <inheritdoc cref="IGeminiClient.ExecuteAsync(IGeminiPrompt, CancellationToken)" />
-        public async Task<IGeminiResponse<string>> ExecuteAsync(IGeminiPrompt prompt, CancellationToken cancellationToken = default) => await CallGeminiAsync<string>(prompt, cancellationToken);
+        /// <inheritdoc cref="IGeminiClient.GenerateTextAsync(IGeminiPrompt, GeminiTextPromptConfig?, CancellationToken)" />
+        public async Task<GeminiTextResponse> GenerateTextAsync(IGeminiPrompt prompt, GeminiTextPromptConfig? config = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var clonedPrompt = prompt.Clone();
+                var response = await CallGeminiAsync(GetPayload(clonedPrompt, tools: config?.GetTools()), cancellationToken);
+                var serializedResponse = JsonConvert.DeserializeObject<ResponseData>(response, JsonSerializerSettings) ?? throw new InvalidOperationException(response);
+                return new(serializedResponse, clonedPrompt);
+            }
+            catch (Exception ex)
+            {
+                return new(prompt, ex);
+            }
+        }
 
-        /// <inheritdoc cref="IGeminiClient.ExecuteAsync{TSchema}(IGeminiPrompt, CancellationToken)" />
-        public async Task<IGeminiResponse<TSchema>> ExecuteAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default) => await CallGeminiAsync<TSchema>(prompt, cancellationToken);
-
-        /// <summary>
-        /// Executes the Gemini API for the given prompt and materializes a typed response.
-        /// Handles multi-part (paged) completions by continuing when the model stops at MaxTokens,
-        /// accumulating all response parts and returning a consolidated <see cref="IGeminiResponse{TSchema}"/>.
-        /// </summary>
-        /// <typeparam name="TSchema">
-        /// The target type for the model output.
-        /// Use <see cref="string"/> to receive raw concatenated text; otherwise the text is JSON-deserialized into <typeparamref name="TSchema"/>.
-        /// A JSON schema derived from <typeparamref name="TSchema"/> is provided to the model to encourage structured output.
-        /// </typeparam>
-        /// <param name="prompt">
-        /// The prompt to execute. A clone is created internally so the original is not mutated.
-        /// The <see cref="IGeminiResponse{TSchema}.Prompt"/> in the result contains the augmented prompt (with model candidates appended).
-        /// </param>
-        /// <param name="cancellationToken">A token to observe for cancellation of the underlying HTTP requests.</param>
-        /// <returns>
-        /// An <see cref="IGeminiResponse{TSchema}"/> containing the deserialized data (if successful).
-        /// </returns>
-        /// <remarks>
-        /// - Resolves HttpClient, ApiKey, and Model from the prompt options or from <see cref="DefaultPromptOptions"/>.<br/>
-        /// - If the last candidate finishes with <c>MaxTokens</c>, the method appends a "Continue" instruction and retries without the response schema to complete the output.<br/>
-        /// - All response parts are accumulated to preserve usage metadata and full text.
-        /// </remarks>
-        private async Task<IGeminiResponse<TSchema>> CallGeminiAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default)
+        /// <inheritdoc cref="IGeminiClient.GenerateObjectAsync{TSchema}(IGeminiPrompt, CancellationToken)" />
+        public async Task<GeminiStructuredResponse<TSchema>> GenerateObjectAsync<TSchema>(IGeminiPrompt prompt, CancellationToken cancellationToken = default)
         {
             try
             {
                 var clonedPrompt = prompt.Clone();
                 var schema = typeof(TSchema) != typeof(string) ? GeminiSchemaBuilder.GetSchema(typeof(TSchema)) : null;
-                var httpClient = clonedPrompt.PromptOptions.HttpClient ?? DefaultPromptOptions.HttpClient ?? throw new InvalidOperationException("HttpClient not found.");
-                var apiKey = clonedPrompt.PromptOptions.ApiKey ?? DefaultPromptOptions.ApiKey ?? throw new InvalidOperationException("ApiKey not found.");
-                var model = clonedPrompt.PromptOptions.Model ?? DefaultPromptOptions.Model ?? throw new InvalidOperationException("Model version not found.", new());
-                var generationConfig = new GenerationConfig(clonedPrompt.PromptOptions, schema);
+                var requestConfig = GetPayload(clonedPrompt, schema);
 
-                GeminiResponseData? serializedResponse;
-                var responseParts = new List<GeminiResponseData>();
+                ResponseData? serializedResponse;
+                var responseParts = new List<ResponseData>();
                 do
                 {
-                    var response = await CallGeminiAsync(clonedPrompt.Contents, generationConfig, model, apiKey, httpClient, cancellationToken);
-                    serializedResponse = JsonConvert.DeserializeObject<GeminiResponseData>(response, JsonSerializerSettings) ?? throw new InvalidOperationException(response);
-                    if (serializedResponse is not null) responseParts.Add(serializedResponse);
+                    var response = await CallGeminiAsync(requestConfig, cancellationToken);
+                    serializedResponse = JsonConvert.DeserializeObject<ResponseData>(response, JsonSerializerSettings) ?? throw new InvalidOperationException(response);
+                    if (serializedResponse is not null)
+                        responseParts.Add(serializedResponse);
                     clonedPrompt.Contents = [.. clonedPrompt.Contents, .. serializedResponse?.Candidates.Select(c => c.Content) ?? []];
 
                     if (serializedResponse?.Candidates.LastOrDefault()?.FinishReason is FinishReason.MaxTokens)
                     {
                         clonedPrompt.AddText($"Continue. follow this schema: {JsonConvert.SerializeObject(schema, JsonSerializerSettings)}");
-                        generationConfig = generationConfig with { ResponseSchema = null };
+                        requestConfig = GetPayload(clonedPrompt);
                     }
                 } while (serializedResponse?.Candidates.LastOrDefault()?.FinishReason is FinishReason.MaxTokens);
 
-                return new GeminiResponse<TSchema>(responseParts, clonedPrompt, JsonSerializerSettings);
+                return new(responseParts, clonedPrompt, JsonSerializerSettings);
             }
             catch (Exception ex)
             {
-                return new GeminiResponse<TSchema>(prompt, ex);
+                return new(prompt, ex);
             }
         }
 
         /// <summary>
-        /// Sends a request to the Gemini API with the specified prompt contents and generation configuration.
+        /// Creates a request configuration object containing all necessary data for a Gemini API call.
         /// </summary>
-        /// <param name="contents">The collection of content parts that make up the prompt.</param>
-        /// <param name="generationConfig">The configuration for response generation.</param>
-        /// <param name="model">The Gemini model version to use.</param>
-        /// <param name="apiKey">The API key for authentication.</param>
-        /// <param name="httpClient">The HTTP client used to send the request.</param>
+        /// <param name="prompt">
+        /// The prompt containing content and configuration options to be sent to the API.
+        /// </param>
+        /// <param name="schema">
+        /// Optional. The response schema object that defines the expected structure of the model's response.
+        /// </param>
+        /// <param name="tools">
+        /// Optional. Collection of tool configurations to enable additional capabilities.
+        /// </param>
+        /// <returns>
+        /// A <see cref="RequestConfig"/> containing the complete configuration for making the API request.
+        /// </returns>
+        private RequestConfig GetPayload(IGeminiPrompt prompt, object? schema = null, IEnumerable<object>? tools = null)
+        {
+            var clonedPrompt = prompt.Clone();
+            var httpClient = clonedPrompt.PromptOptions.HttpClient ?? DefaultPromptOptions.HttpClient ?? throw new InvalidOperationException("HttpClient not found.");
+            var apiKey = clonedPrompt.PromptOptions.ApiKey ?? DefaultPromptOptions.ApiKey ?? throw new InvalidOperationException("ApiKey not found.");
+            var model = clonedPrompt.PromptOptions.Model ?? DefaultPromptOptions.Model ?? throw new InvalidOperationException("Model version not found.", new());
+            var generationConfig = new GenerationConfig(clonedPrompt.PromptOptions, schema);
+            return new(new(clonedPrompt.Contents, generationConfig, tools ?? []), model, apiKey, httpClient);
+        }
+
+        /// <summary>
+        /// Sends a request to the Gemini API using the provided request configuration.
+        /// </summary>
+        /// <param name="requestConfig">The complete request configuration containing.</param>
         /// <param name="cancellationToken">Optional. A token to monitor for cancellation requests.</param>
         /// <returns>The raw JSON response from the Gemini API as a string.</returns>
         /// <exception cref="BadHttpRequestException">Thrown if the HTTP response indicates a failure.</exception>
-        private static async Task<string> CallGeminiAsync(ICollection<Content> contents, GenerationConfig generationConfig, string model, string apiKey, HttpClient httpClient, CancellationToken cancellationToken = default)
+        private static async Task<string> CallGeminiAsync(RequestConfig requestConfig, CancellationToken cancellationToken = default)
         {
-            var uri = new Uri(@$"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}");
+            var uri = new Uri(@$"https://generativelanguage.googleapis.com/v1beta/models/{requestConfig.Model}:generateContent?key={requestConfig.ApiKey}");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, uri)
             {
-                Content = new StringContent(JsonConvert.SerializeObject(new PromptConfig(contents, generationConfig), JsonSerializerSettings), Encoding.UTF8, MediaTypeNames.Application.Json)
+                Content = new StringContent(JsonConvert.SerializeObject(requestConfig.Payload, JsonSerializerSettings), Encoding.UTF8, MediaTypeNames.Application.Json)
             };
 
-            using var response = await httpClient.SendAsync(request, cancellationToken);
-            
+            using var response = await requestConfig.HttpClient.SendAsync(request, cancellationToken);
             var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+
             return response.IsSuccessStatusCode ? responseText : throw new BadHttpRequestException(responseText, (int)response.StatusCode);
         }
     }

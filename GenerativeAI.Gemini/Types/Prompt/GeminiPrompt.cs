@@ -4,23 +4,19 @@ using GenerativeAI.Gemini.Models;
 using GenerativeAI.Gemini.Models.Part;
 using Newtonsoft.Json;
 
-namespace GenerativeAI.Gemini.Types
+namespace GenerativeAI.Gemini.Types.Prompt
 {
     /// <summary>
     /// Represents a prompt to the Gemini AI model.
     /// </summary>
     /// <param name="options">The configuration options used for this prompt.</param>
     /// <param name="contents">The initial collection of content parts that make up the prompt. If null, an empty collection is used.</param>
-    internal sealed class GeminiPrompt(GeminiPromptOptions options, ICollection<Content>? contents = null) : IGeminiPrompt
+    public sealed class GeminiPrompt(GeminiPromptOptions options, ICollection<Content>? contents = null) : IGeminiPrompt
     {
-        /// <summary>
-        /// The collection of content parts that make up the prompt.
-        /// </summary>
+        /// <inheritdoc cref="IGeminiPrompt.Contents" />
         public ICollection<Content> Contents { get; set; } = contents ?? [];
 
-        /// <summary>
-        /// Gets or sets the configuration options used for this prompt.
-        /// </summary>
+        /// <inheritdoc cref="IGeminiPrompt.PromptOptions" />
         public GeminiPromptOptions PromptOptions { get; set; } = options;
 
         /// <summary>
@@ -36,20 +32,10 @@ namespace GenerativeAI.Gemini.Types
             return new GeminiPrompt(PromptOptions with { }, clonedContents ?? throw new FormatException());
         }
 
-        /// <summary>
-        /// Adds a text part to the prompt with the specified role (default is user).
-        /// </summary>
-        /// <param name="text">The text to add to the prompt.</param>
-        /// <param name="role">The role associated with the text (user or model).</param>
-        /// <returns>The current <see cref="IGeminiPrompt"/> instance for chaining.</returns>
+        /// <inheritdoc cref="IGeminiPrompt.AddText(string, ContentRole)" />
         public IGeminiPrompt AddText(string text, ContentRole role = ContentRole.User) => AddPart(new TextPart(text), role);
 
-        /// <summary>
-        /// Adds an inline file (as base64-encoded data) to the prompt.
-        /// </summary>
-        /// <param name="base64File">The file content encoded as a base64 string.</param>
-        /// <param name="mimeType">The MIME type of the file.</param>
-        /// <returns>The current <see cref="IGeminiPrompt"/> instance for chaining.</returns>
+        /// <inheritdoc cref="IGeminiPrompt.AddInlineData(string, string)" />
         public IGeminiPrompt AddInlineData(string base64File, string mimeType) => AddPart(new InlineDataPart(new(base64File, mimeType)));
 
         /// <summary>
